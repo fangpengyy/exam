@@ -1,0 +1,442 @@
+YangFangPeng 解答某公司 c++笔试题：
+
+1、我们有N条电线，每个电线两端是不同规格的接口（a/b/c/d....），同一根电线两端的接口规格可能是不同的，只有相同规格的接口才能把两根电线连接在一起，设计一个程序，判断所有这些电线是否能合并为一根长电线。
+输入：N行，每行是两个字符串，表示电线的规格，如
+aa
+a b
+b c
+输出：是否能拼接为一根电线
+
+
+#include <iostream>
+#include <set>
+#include <algorithm> 
+#include <string>
+#include <map>
+#include <thread>
+#include <unistd.h>
+#include <list>
+#include <atomic>
+#include<sys/time.h>
+
+
+using namespace std;
+
+
+int64_t Now()
+{
+   struct  timeval loVal;
+   gettimeofday(&loVal, 0);
+   return 1000000 * loVal.tv_sec + loVal.tv_usec;
+}
+
+
+struct TPeer{
+	string peer;
+	bool flag;
+};
+
+enum Enum_Mode{enum_Mbegin, enum_Mend};
+
+void ResetFlag(TPeer sLines[], int count)
+{
+	for (int i = 0; i < count; i++)
+		sLines[i].flag = false;
+}
+
+int FindPeer(char& beginPeer, TPeer sLines[], unsigned int startIndex, int count)
+{
+	unsigned int i = startIndex;
+	while (i < count)
+	{
+		if (!sLines[i].flag)
+		{
+			if (beginPeer == sLines[i].peer[0])
+			{
+				beginPeer = sLines[i].peer[1];
+				sLines[i].flag = true;
+				return i;
+			}
+			else if (beginPeer == sLines[i].peer[1])
+			{
+				beginPeer = sLines[i].peer[0];
+				sLines[i].flag = true;
+				return i;
+			}
+		}
+		
+		i = ++i % count;
+		if (i == startIndex)
+			break;
+	}
+	return -1;
+}
+
+bool JoinLine(TPeer sLines[], Enum_Mode mode, unsigned int startIndex, int count)
+{
+	int i = startIndex;
+	char ch = mode == enum_Mbegin ? sLines[i].peer[0] : sLines[i].peer[1];
+	
+	sLines[i].flag = true;
+	cout << sLines[i].peer << "  ";
+
+	int num = 1;
+	while (1)
+	{
+		int foundIndex = FindPeer(ch, sLines, i, count);
+		if (foundIndex > 0)
+		{
+			cout << sLines[foundIndex].peer << "  ";
+			
+			num++;
+			if (num == count)
+				return true;
+			i = foundIndex + 1;
+			if (i == count)
+				i = 0;
+		}
+		else
+	 	  return false;
+
+	}
+	return false;
+}
+
+bool CheckOneLine(TPeer sLines[], int count, Enum_Mode mode)
+{
+	string sMode = mode == enum_Mbegin ? "enum_Mbegin" : "enum_Mend";
+	cout << "\n\n mode=" << sMode << "\n";
+
+	ResetFlag(sLines, count);
+	for (int i = 0; i < count; i++)
+	{
+		if (JoinLine(sLines, mode, i, count))
+			return true;
+
+	}
+	return false;
+}
+
+//测试
+int main(int argc, char* argv[])
+{
+/*	TPeer sLines[] = {
+			{ "hv", false },
+			{ "aa", false }, 
+			{ "ab", false }, 
+			{ "nk", false },
+			{ "bc", false }, 
+			{ "nk", false },
+			{ "dc", false }, 
+			{"df", false },
+			{ "mn", false },
+			{ "mf", false },
+			{ "kh", false },
+           };
+	*/
+
+	TPeer sLines[] = {
+			{ "hv", false },
+			{ "aa", false },
+			{ "ab", false },
+			{ "nk", false },
+			{ "bc", false },
+			{ "dc", false },
+			{ "df", false },
+			{ "mn", false },
+			{ "mf", false },
+			{ "kh", false },
+			{ "ff", false },
+	};
+	
+	const int N = sizeof(sLines) / sizeof(TPeer);
+	
+	if (CheckOneLine(sLines, N, enum_Mbegin))
+	{
+		cout << "one line succ\n";
+	}
+	else if (CheckOneLine(sLines, N, enum_Mend))
+	{
+		cout << "one line succ\n";
+	}
+	else
+	{
+		cout << "one line fail\n";
+	}
+}
+
+
+2、实现一个键值存储工具类，要求如下：
+a.  有两个接口，其中K和V都是字符串，如果:
+typedef string K;
+typedef string V;
+class KV {
+public:
+    V Get(K);
+void Set(K, V);
+}
+b.  Set会把对应的键值存储下来，如果K值已经存在，则会覆盖V值；
+c.  Get会返回与K对应的V值，如果不存在则会返回空串；
+d.  最多存储N条记录，如果超过N，则会删除最早的数据（以数据被修改的时间为准）；
+e.  数据超过T时间没有被修改，就会被自动删除；
+f.  需要尽可能高读写，且线程安全。
+
+
+
+
+class RwMute
+{
+public:
+  RwMute();
+  ~RwMute();
+  int RLock();
+  int WLock();
+  void UnLock();
+private:
+   pthread_rwlock_t _oRwMute;
+};
+
+RwMute::RwMute()
+{
+   pthread_rwlock_init(&_oRwMute, NULL);
+     
+}
+
+RwMute::~RwMute()
+{
+    pthread_rwlock_destroy(&_oRwMute);
+}
+
+int RwMute::RLock()
+{
+    return pthread_rwlock_rdlock(&_oRwMute);
+}
+
+int RwMute::WLock()
+{
+    return pthread_rwlock_wrlock(&_oRwMute);
+}
+
+void RwMute::UnLock()
+{
+    pthread_rwlock_unlock(&_oRwMute);
+}
+
+
+
+enum Enum_RWTYPE {enum_Read, enum_Write};
+
+class CWrLocker
+{
+public:
+    CWrLocker(RwMute* apRWMute, Enum_RWTYPE aiType)
+    {
+        _pRWMute = apRWMute;
+        if(aiType == enum_Read)
+            _pRWMute->RLock();
+        else if(aiType == enum_Write)
+            _pRWMute->WLock();
+    }
+
+    ~CWrLocker()
+    {
+        if(_pRWMute)
+            _pRWMute->UnLock();
+    }
+private:
+    RwMute* _pRWMute;
+};
+
+
+typedef string K;
+typedef string V;
+
+#define DEF_LIMIT_N 2
+#define DEF_SEC_TIME  2* 1000000 
+
+class KV
+{
+public:
+       KV(); 
+       ~KV();
+	V Get(K key);
+	void Set(K key, V val);
+private:
+        void Init();
+        void OnCheck();
+private:
+	map<K,V> _mapVal;
+	map<K, int64_t> _mapValTime;
+	RwMute _rwMuteK;
+
+        map<int64_t, K> _mapTimeK;
+        RwMute _rwMuteTime;
+        bool _bStart;
+        atomic<bool> _bRemove;
+};
+
+KV::~KV()
+{
+   _bStart = false;
+}
+
+KV::KV()
+{
+   Init();
+}
+
+void KV::Init()
+{
+   thread loThread(&KV::OnCheck, this);
+   loThread.detach();
+}
+
+void KV::OnCheck()
+{
+  _bStart = true; 
+  while(_bStart)
+  {
+    int64_t loNow =  Now();
+    
+    std::list<K> loListKey;
+    std::list<int64_t> loListTime;
+
+    _rwMuteTime.RLock();
+    
+    map<int64_t, K>::iterator it =  _mapTimeK.begin();
+    for(; it != _mapTimeK.end(); it++)
+    {
+       if(it != _mapTimeK.end())
+       {
+          if(it->first + DEF_SEC_TIME <= loNow)
+          {
+             loListKey.push_back(it->second);
+             loListTime.push_back(it->first);
+          } 
+          else 
+             break;
+       }
+    }
+    _rwMuteTime.UnLock();
+  
+    
+    if(loListTime.size()>0)
+    {
+       _rwMuteTime.WLock();
+       std::list<int64_t>::iterator it = loListTime.begin();
+       for(; it != loListTime.end();it++)
+       {
+          _mapTimeK.erase(*it);
+       }        
+       _rwMuteTime.UnLock();
+       
+       _rwMuteK.WLock();
+       std::list<K>::iterator itK = loListKey.begin();
+       for(; itK != loListKey.end();itK++)
+       {
+          _mapVal.erase(*itK);
+          _bRemove = false;
+       }
+       _rwMuteK.UnLock();
+     }
+
+   sleep(1);
+  }
+}
+
+V KV::Get(K key)
+{
+   CWrLocker loLocker(&_rwMuteK, enum_Read);
+   map<K,V>::iterator it = _mapVal.find(key);
+   if(it != _mapVal.end())
+      return it->second;
+
+   return ""; 
+}
+ 
+void KV::Set(K key, V val)
+{
+   {
+      CWrLocker loLocker(&_rwMuteK, enum_Read);
+      if(_mapVal.find(key) == _mapVal.end())
+      {
+          if(_mapVal.size() == DEF_LIMIT_N)
+             _bRemove = true;  
+           else
+             _bRemove = false; 
+      }
+      else
+        _bRemove = false; 
+   }
+
+   int64_t liTime;
+   K lsKey;
+   if(_bRemove) 
+   {
+      CWrLocker loLocker(&_rwMuteTime, enum_Read);
+      map<int64_t, K>::iterator it = _mapTimeK.begin();
+      if(it != _mapTimeK.end())
+      {   
+         lsKey = it->second;
+         liTime = it->first;
+      }
+   }
+
+   int64_t liNow;
+   int64_t loldTime;    
+   bool lbDelTime= false;
+   {
+    CWrLocker loLocker(&_rwMuteK, enum_Write);
+     if(_bRemove && _mapVal.size() == DEF_LIMIT_N)
+     {
+        _mapVal.erase(lsKey);
+        lbDelTime = true;
+     }
+
+     _mapVal[key] = val;
+     liNow = Now();
+     loldTime = _mapValTime[key];
+     _mapValTime[key] = liNow;
+   }
+
+    
+   {
+      CWrLocker loLocker(&_rwMuteTime, enum_Write);
+      if(lbDelTime)
+         _mapTimeK.erase(liTime);
+    
+      _mapTimeK.erase(loldTime);
+      _mapTimeK[liNow] = key;
+    }   
+}
+
+int main(int argc, char* argv[])
+{
+    KV loKv;
+    loKv.Set("uu", "788");
+
+    cout<<"key uu,val="<<loKv.Get("uu")<<endl;
+
+    loKv.Set("hjk","900");
+
+   // 测试超出数量，自动删除最早的Key
+    loKv.Set("hjk","901");
+
+    cout<<"1-------key uu,val="<<loKv.Get("uu")<<endl;
+      
+    loKv.Set("mn","765");
+    cout<<"2-------key uu,val="<<loKv.Get("uu")<<endl;
+
+    cout<<"key hjk ,val="<<loKv.Get("hjk")<<endl;
+
+    sleep(3);
+    // 测试超时删除Key
+    cout<<"timeout key hjk ,val="<<loKv.Get("hjk")<<endl;
+
+
+    cout<<"----\n";
+
+    char ch;
+    cin >> ch;
+    return 0;
+}
